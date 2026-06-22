@@ -18,6 +18,7 @@
 package org.apache.rocketmq.client.java.misc;
 
 import org.apache.rocketmq.client.apis.consumer.OffsetOption;
+import org.apache.rocketmq.client.apis.consumer.PeekDirection;
 
 public class ProtobufUtils {
     private ProtobufUtils() {
@@ -53,6 +54,17 @@ public class ProtobufUtils {
             return apache.rocketmq.v2.OffsetOption.Policy.MAX;
         }
         throw new IllegalArgumentException("Unknown policy type: " + policyValue);
+    }
+
+    public static apache.rocketmq.v2.PeekDirection toProtobufPeekDirection(PeekDirection direction) {
+        switch (direction) {
+            case FORWARD:
+                return apache.rocketmq.v2.PeekDirection.FORWARD;
+            case BACKWARD:
+                return apache.rocketmq.v2.PeekDirection.BACKWARD;
+            default:
+                throw new IllegalArgumentException("Unknown PeekDirection: " + direction);
+        }
     }
 
 }

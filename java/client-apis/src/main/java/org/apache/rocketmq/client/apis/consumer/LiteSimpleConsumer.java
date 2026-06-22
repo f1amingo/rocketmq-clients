@@ -105,6 +105,21 @@ public interface LiteSimpleConsumer extends Closeable {
     void changeInvisibleDuration(MessageView messageView, Duration invisibleDuration) throws ClientException;
 
     /**
+     * Peek messages from the lite topic without consuming them.
+     * <p>This is a read-only operation that does not advance the consumption offset,
+     * acquire locks, or update sequential consumption state.
+     *
+     * @param liteTopic the name of the lite topic to peek from
+     * @param maxMsgNum max number of messages to return, must be in range [1, 32]
+     * @param anchor    the offset anchor point for peek, TAIL_N and OFFSET types are not allowed
+     * @param direction the peek direction, either FORWARD or BACKWARD
+     * @return list of message view
+     * @throws ClientException if an error occurs during the peek operation
+     */
+    List<MessageView> peek(String liteTopic, int maxMsgNum, OffsetOption anchor, PeekDirection direction)
+        throws ClientException;
+
+    /**
      * Close the lite simple consumer and release all related resources.
      *
      * <p>Once lite simple consumer is closed, <strong>it could not be started once again.</strong> we maintained an FSM

@@ -29,6 +29,8 @@ import apache.rocketmq.v2.HeartbeatRequest;
 import apache.rocketmq.v2.HeartbeatResponse;
 import apache.rocketmq.v2.NotifyClientTerminationRequest;
 import apache.rocketmq.v2.NotifyClientTerminationResponse;
+import apache.rocketmq.v2.PeekMessageRequest;
+import apache.rocketmq.v2.PeekMessageResponse;
 import apache.rocketmq.v2.QueryAssignmentRequest;
 import apache.rocketmq.v2.QueryAssignmentResponse;
 import apache.rocketmq.v2.QueryRouteRequest;
@@ -201,6 +203,18 @@ public interface RpcClient {
      */
     ListenableFuture<RecallMessageResponse> recallMessage(Metadata metadata,
         RecallMessageRequest request, Executor executor, Duration duration);
+
+    /**
+     * Peek messages from lite topic asynchronously (read-only, no consumption).
+     *
+     * @param metadata gRPC request header metadata.
+     * @param request  peek message request.
+     * @param executor gRPC asynchronous executor.
+     * @param duration request max duration.
+     * @return invocation of response future.
+     */
+    ListenableFuture<PeekMessageResponse> peekMessage(Metadata metadata,
+        PeekMessageRequest request, Executor executor, Duration duration);
 
     /**
      * Sync lite subscription asynchronously.

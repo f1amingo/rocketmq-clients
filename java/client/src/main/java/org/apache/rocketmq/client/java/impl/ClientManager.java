@@ -29,6 +29,8 @@ import apache.rocketmq.v2.HeartbeatRequest;
 import apache.rocketmq.v2.HeartbeatResponse;
 import apache.rocketmq.v2.NotifyClientTerminationRequest;
 import apache.rocketmq.v2.NotifyClientTerminationResponse;
+import apache.rocketmq.v2.PeekMessageRequest;
+import apache.rocketmq.v2.PeekMessageResponse;
 import apache.rocketmq.v2.QueryAssignmentRequest;
 import apache.rocketmq.v2.QueryAssignmentResponse;
 import apache.rocketmq.v2.QueryRouteRequest;
@@ -183,6 +185,17 @@ public abstract class ClientManager extends AbstractIdleService {
      */
     public abstract RpcFuture<RecallMessageRequest, RecallMessageResponse> recallMessage(Endpoints endpoints,
         RecallMessageRequest request, Duration duration);
+
+    /**
+     * Peek messages from lite topic asynchronously (read-only, no consumption), the method ensures no throwable.
+     *
+     * @param endpoints request endpoints.
+     * @param request   peek message request.
+     * @param duration  request max duration.
+     * @return invocation of response future.
+     */
+    public abstract RpcFuture<PeekMessageRequest, PeekMessageResponse> peekMessage(Endpoints endpoints,
+        PeekMessageRequest request, Duration duration);
 
     /**
      * Sync lite subscription asynchronously, the method ensures no throwable.
