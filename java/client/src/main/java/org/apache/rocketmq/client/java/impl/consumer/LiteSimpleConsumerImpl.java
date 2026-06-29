@@ -28,17 +28,15 @@ import org.apache.rocketmq.client.apis.ClientException;
 import org.apache.rocketmq.client.apis.consumer.LiteSimpleConsumer;
 import org.apache.rocketmq.client.apis.consumer.OffsetOption;
 import org.apache.rocketmq.client.apis.consumer.PeekDirection;
+import org.apache.rocketmq.client.apis.consumer.PeekIterator;
 import org.apache.rocketmq.client.apis.message.MessageView;
 import org.apache.rocketmq.client.java.impl.ClientType;
 import org.apache.rocketmq.client.java.message.protocol.Resource;
 import org.apache.rocketmq.client.java.route.Endpoints;
 import org.apache.rocketmq.client.java.route.MessageQueueImpl;
 import org.apache.rocketmq.client.java.route.TopicRouteData;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class LiteSimpleConsumerImpl extends SimpleConsumerImpl implements LiteSimpleConsumer {
-    private static final Logger log = LoggerFactory.getLogger(LiteSimpleConsumerImpl.class);
 
     private final LiteSubscriptionManager liteSubscriptionManager;
 
@@ -123,8 +121,8 @@ public class LiteSimpleConsumerImpl extends SimpleConsumerImpl implements LiteSi
     }
 
     @Override
-    public List<MessageView> peek(String liteTopic, int maxMsgNum, OffsetOption anchor, PeekDirection direction)
+    public PeekIterator peek(String liteTopic, OffsetOption anchor, PeekDirection direction)
         throws ClientException {
-        return liteSubscriptionManager.peek(liteTopic, maxMsgNum, anchor, direction);
+        return liteSubscriptionManager.peek(liteTopic, anchor, direction);
     }
 }

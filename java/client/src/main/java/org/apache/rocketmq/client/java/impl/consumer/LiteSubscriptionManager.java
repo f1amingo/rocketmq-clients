@@ -43,6 +43,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.rocketmq.client.apis.ClientException;
 import org.apache.rocketmq.client.apis.consumer.OffsetOption;
 import org.apache.rocketmq.client.apis.consumer.PeekDirection;
+import org.apache.rocketmq.client.apis.consumer.PeekIterator;
 import org.apache.rocketmq.client.apis.message.MessageView;
 import org.apache.rocketmq.client.java.exception.LiteSubscriptionQuotaExceededException;
 import org.apache.rocketmq.client.java.exception.StatusChecker;
@@ -56,7 +57,6 @@ import org.slf4j.LoggerFactory;
 
 public class LiteSubscriptionManager {
     private static final Logger log = LoggerFactory.getLogger(LiteSubscriptionManager.class);
-
     protected final ConsumerImpl consumerImpl;
     protected final Resource bindTopic;
     protected final Resource group;
@@ -191,31 +191,42 @@ public class LiteSubscriptionManager {
         }
     }
 
-    public List<MessageView> peek(String liteTopic, int maxMsgNum, OffsetOption anchor,
-        PeekDirection direction) throws ClientException {
+    public PeekIterator peek(String liteTopic, OffsetOption anchor, PeekDirection direction)
+        throws ClientException {
         consumerImpl.checkRunning();
         if (liteTopic == null || liteTopic.isEmpty()) {
             throw new IllegalArgumentException("liteTopic must not be null or empty");
         }
-        if (maxMsgNum <= 0) {
-            throw new IllegalArgumentException("maxMsgNum must be positive, got: " + maxMsgNum);
-        }
         if (anchor == null) {
             throw new IllegalArgumentException("anchor must not be null");
         }
-        if (anchor.getType() == OffsetOption.Type.TAIL_N || anchor.getType() == OffsetOption.Type.OFFSET) {
-            throw new IllegalArgumentException("TAIL_N and OFFSET are not allowed for peek, got: " + anchor.getType());
+        if (anchor.getType() == OffsetOption.Type.TAIL_N
+            || anchor.getType() == OffsetOption.Type.OFFSET) {
+            throw new IllegalArgumentException(
+                "TAIL_N and OFFSET are not allowed as peek anchor, got: " + anchor.getType());
         }
         if (direction == null) {
             throw new IllegalArgumentException("direction must not be null");
         }
+        return new PeekIteratorImpl(this, liteTopic, anchor, direction);
+    }
 
+    PeekResult peekInternal(String liteTopic, int maxMsgNum, OffsetOption anchor,
+        String cursor, PeekDirection direction) throws ClientException {
+        final apache.rocketmq.v2.OffsetOption protoOption;
+        if (cursor != null) {
+            // cursor takes precedence over anchor for continuation reads
+            protoOption = apache.rocketmq.v2.OffsetOption.newBuilder()
+                .setCursor(cursor).build();
+        } else {
+            protoOption = ProtobufUtils.toProtobufOffsetOption(anchor);
+        }
         final PeekMessageRequest request = PeekMessageRequest.newBuilder()
             .setTopic(bindTopic.toProtobuf())
             .setLiteTopic(liteTopic)
             .setGroup(group.toProtobuf())
             .setMaxMsgNum(maxMsgNum)
-            .setOffsetOption(ProtobufUtils.toProtobufOffsetOption(anchor))
+            .setOffsetOption(protoOption)
             .setDirection(ProtobufUtils.toProtobufPeekDirection(direction))
             .build();
 
@@ -223,21 +234,35 @@ public class LiteSubscriptionManager {
         final RpcFuture<PeekMessageRequest, PeekMessageResponse> rpcFuture =
             consumerImpl.getClientManager().peekMessage(consumerImpl.getEndpoints(), request, requestTimeout);
 
-        ListenableFuture<List<MessageView>> future = Futures.transformAsync(rpcFuture, response -> {
+        ListenableFuture<PeekResult> future = Futures.transformAsync(rpcFuture, response -> {
             StatusChecker.check(response.getStatus(), rpcFuture);
             List<MessageView> result = new ArrayList<>();
             for (Message message : response.getMessagesList()) {
                 result.add(MessageViewImpl.fromProtobuf(message));
             }
-            return Futures.immediateFuture(result);
+            return Futures.immediateFuture(
+                new PeekResult(result, response.getCursor(), response.getRestNum()));
         }, MoreExecutors.directExecutor());
         try {
             return consumerImpl.handleClientFuture(future);
         } catch (ClientException e) {
-            log.error("Failed to peek topic={}, group={}, liteTopic={}, maxMsgNum={}, anchor={}, direction={}, clientId={}",
-                getBindTopicName(), getConsumerGroupName(), liteTopic, maxMsgNum, anchor, direction,
-                consumerImpl.getClientId(), e);
+            log.error("Failed to peek topic={}, group={}, liteTopic={},"
+                    + " maxMsgNum={}, anchor={}, cursor={}, direction={}, clientId={}",
+                getBindTopicName(), getConsumerGroupName(), liteTopic, maxMsgNum,
+                anchor, cursor, direction, consumerImpl.getClientId(), e);
             throw e;
+        }
+    }
+
+    static class PeekResult {
+        final List<MessageView> messages;
+        final String cursor;
+        final long restNum;
+
+        PeekResult(List<MessageView> messages, String cursor, long restNum) {
+            this.messages = messages;
+            this.cursor = cursor;
+            this.restNum = restNum;
         }
     }
 

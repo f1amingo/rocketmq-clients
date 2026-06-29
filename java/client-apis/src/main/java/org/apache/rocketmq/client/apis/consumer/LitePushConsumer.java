@@ -19,10 +19,8 @@ package org.apache.rocketmq.client.apis.consumer;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.List;
 import java.util.Set;
 import org.apache.rocketmq.client.apis.ClientException;
-import org.apache.rocketmq.client.apis.message.MessageView;
 
 public interface LitePushConsumer extends Closeable {
 
@@ -76,15 +74,16 @@ public interface LitePushConsumer extends Closeable {
      * Peek messages from the lite topic without consuming them.
      * <p>This is a read-only operation that does not advance the consumption offset,
      * acquire locks, or update sequential consumption state.
+     * <p>Returns a {@link PeekIterator} that internally manages cursor-based pagination;
+     * users only interact via {@code hasNext()}/{@code next()}.
      *
      * @param liteTopic the name of the lite topic to peek from
-     * @param maxMsgNum max number of messages to return, must be in range [1, 32]
      * @param anchor    the offset anchor point for peek, TAIL_N and OFFSET types are not allowed
      * @param direction the peek direction, either FORWARD or BACKWARD
-     * @return list of message view
+     * @return iterator over peeked messages
      * @throws ClientException if an error occurs during the peek operation
      */
-    List<MessageView> peek(String liteTopic, int maxMsgNum, OffsetOption anchor, PeekDirection direction)
+    PeekIterator peek(String liteTopic, OffsetOption anchor, PeekDirection direction)
         throws ClientException;
 
     /**
