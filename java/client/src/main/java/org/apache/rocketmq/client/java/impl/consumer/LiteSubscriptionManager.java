@@ -191,19 +191,13 @@ public class LiteSubscriptionManager {
         }
     }
 
-    public PeekIterator peek(String liteTopic, OffsetOption anchor, PeekDirection direction)
-        throws ClientException {
+    public PeekIterator peek(String liteTopic, OffsetOption anchor, PeekDirection direction) {
         consumerImpl.checkRunning();
         if (liteTopic == null || liteTopic.isEmpty()) {
             throw new IllegalArgumentException("liteTopic must not be null or empty");
         }
         if (anchor == null) {
             throw new IllegalArgumentException("anchor must not be null");
-        }
-        if (anchor.getType() == OffsetOption.Type.TAIL_N
-            || anchor.getType() == OffsetOption.Type.OFFSET) {
-            throw new IllegalArgumentException(
-                "TAIL_N and OFFSET are not allowed as peek anchor, got: " + anchor.getType());
         }
         if (direction == null) {
             throw new IllegalArgumentException("direction must not be null");

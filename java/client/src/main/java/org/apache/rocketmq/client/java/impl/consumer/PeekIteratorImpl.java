@@ -48,19 +48,20 @@ class PeekIteratorImpl implements PeekIterator {
 
     @Override
     public boolean hasNext() {
-        if (currentPage.hasNext()) {
-            return true;
-        }
-        if (restNum <= 0) {
-            return false;
-        }
-        fetchNextBatch();
-        return currentPage.hasNext();
+        return currentPage.hasNext() || restNum > 0;
     }
 
     @Override
     public MessageView next() {
-        if (!hasNext()) {
+        if (currentPage.hasNext()) {
+            return currentPage.next();
+        }
+        if (restNum <= 0) {
+            throw new NoSuchElementException();
+        }
+        fetchNextBatch();
+        // Current page was empty and fetch succeeded but yielded no messages.
+        if (!currentPage.hasNext()) {
             throw new NoSuchElementException();
         }
         return currentPage.next();
@@ -71,13 +72,11 @@ class PeekIteratorImpl implements PeekIterator {
             LiteSubscriptionManager.PeekResult result =
                 liteSubscriptionManager.peekInternal(
                     liteTopic, PEEK_BATCH_SIZE, anchor, cursor, direction);
+            // Update state only after the network call succeeds,
+            // so that on failure the caller can retry next() safely.
             restNum = result.restNum;
+            cursor = result.cursor;
             currentPage = result.messages.iterator();
-            if (result.cursor != null && !result.cursor.isEmpty()) {
-                cursor = result.cursor;
-            } else {
-                restNum = 0;
-            }
         } catch (ClientException e) {
             throw new RuntimeException("Failed to fetch next batch in peek iterator", e);
         }
