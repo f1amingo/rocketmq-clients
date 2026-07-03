@@ -17,13 +17,42 @@
 
 package org.apache.rocketmq.client.apis.consumer;
 
-import java.util.Iterator;
+import org.apache.rocketmq.client.apis.ClientException;
 import org.apache.rocketmq.client.apis.message.MessageView;
 
 /**
- * Iterator for peeking messages from a lite topic without consuming them.
- * <p>The SDK internally manages cursor-based pagination; users only interact
- * via {@link #hasNext()} and {@link #next()}.
+ * Iterator for peeking messages from a lite topic without affecting the consumer's commit offset.
+ * <p>Use {@link #hasNext()} and {@link #next()} to iterate messages.
+ * After consuming one or more messages, call {@link #toOffsetOption()} to capture the position
+ * of the last returned message, which can later be used to resume consumption.
  */
-public interface PeekIterator extends Iterator<MessageView> {
+public interface PeekIterator {
+
+    /**
+     * Returns {@code true} if the iteration has more messages.
+     *
+     * @return {@code true} if more messages are available.
+     */
+    boolean hasNext();
+
+    /**
+     * Returns the next message in the iteration.
+     *
+     * @return the next {@link MessageView}.
+     * @throws java.util.NoSuchElementException if the iteration has no more messages; check with {@link #hasNext()} first.
+     * @throws ClientException                  if a network or server error occurs; callers may retry by calling this method again.
+     */
+    MessageView next() throws ClientException;
+
+    /**
+     * Returns an {@link OffsetOption} representing the position of the last message
+     * returned by {@link #next()}, which can be passed to
+     * {@link LitePushConsumer#subscribeLite(String, OffsetOption)} or
+     * {@link LiteSimpleConsumer#subscribeLite(String, OffsetOption)}
+     * to resume consumption from that point.
+     *
+     * @return the {@link OffsetOption} for resuming consumption.
+     * @throws IllegalStateException if {@link #next()} has never been called successfully.
+     */
+    OffsetOption toOffsetOption();
 }

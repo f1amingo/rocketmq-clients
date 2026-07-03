@@ -203,9 +203,15 @@ public class MessageViewImpl implements MessageView {
         return ++deliveryAttempt;
     }
 
-    @SuppressWarnings("unused")
     public MessageQueueImpl getMessageQueue() {
         return messageQueue;
+    }
+
+    public String getBrokerName() {
+        if (messageQueue == null || messageQueue.getBroker() == null) {
+            return null;
+        }
+        return messageQueue.getBroker().getName();
     }
 
     public Endpoints getEndpoints() {
@@ -220,7 +226,6 @@ public class MessageViewImpl implements MessageView {
         this.receiptHandle = receiptHandle;
     }
 
-    @SuppressWarnings("unused")
     public long getOffset() {
         return offset;
     }

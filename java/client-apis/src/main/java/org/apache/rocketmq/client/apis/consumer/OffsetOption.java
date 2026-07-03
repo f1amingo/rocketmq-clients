@@ -32,10 +32,18 @@ public class OffsetOption {
 
     private final Type type;
     private final long value;
+    private final Cursor cursor;
 
     private OffsetOption(Type type, long value) {
         this.type = type;
         this.value = value;
+        this.cursor = null;
+    }
+
+    private OffsetOption(Cursor cursor) {
+        this.type = Type.CURSOR;
+        this.value = 0;
+        this.cursor = cursor;
     }
 
     public static OffsetOption ofOffset(long offset) {
@@ -59,6 +67,13 @@ public class OffsetOption {
         return new OffsetOption(Type.TIMESTAMP, timestamp);
     }
 
+    public static OffsetOption ofCursor(Cursor cursor) {
+        if (cursor == null) {
+            throw new IllegalArgumentException("cursor must not be null");
+        }
+        return new OffsetOption(cursor);
+    }
+
     public Type getType() {
         return type;
     }
@@ -67,35 +82,45 @@ public class OffsetOption {
         return value;
     }
 
+    public Cursor getCursor() {
+        return cursor;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
         OffsetOption option = (OffsetOption) o;
-        return value == option.value && type == option.type;
+        return value == option.value && type == option.type && Objects.equals(cursor, option.cursor);
     }
 
     @Override
     public int hashCode() {
         int result = Objects.hashCode(type);
         result = 31 * result + Long.hashCode(value);
+        result = 31 * result + Objects.hashCode(cursor);
         return result;
     }
 
     @Override
     public String toString() {
-        return MoreObjects.toStringHelper(this)
-            .add("type", type)
-            .add("value", value)
-            .toString();
+        MoreObjects.ToStringHelper helper = MoreObjects.toStringHelper(this)
+            .add("type", type);
+        if (type == Type.CURSOR) {
+            helper.add("cursor", cursor);
+        } else {
+            helper.add("value", value);
+        }
+        return helper.toString();
     }
 
     public enum Type {
         POLICY,
         OFFSET,
         TAIL_N,
-        TIMESTAMP
+        TIMESTAMP,
+        CURSOR
     }
 
 }

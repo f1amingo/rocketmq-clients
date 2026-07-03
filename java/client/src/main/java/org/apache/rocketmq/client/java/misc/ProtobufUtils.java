@@ -17,6 +17,8 @@
 
 package org.apache.rocketmq.client.java.misc;
 
+import java.util.Map;
+import org.apache.rocketmq.client.apis.consumer.Cursor;
 import org.apache.rocketmq.client.apis.consumer.OffsetOption;
 import org.apache.rocketmq.client.apis.consumer.PeekDirection;
 
@@ -39,10 +41,25 @@ public class ProtobufUtils {
             case TIMESTAMP:
                 protoBuilder.setTimestamp(offsetOption.getValue());
                 break;
+            case CURSOR:
+                protoBuilder.setCursor(toProtobufCursor(offsetOption.getCursor()));
+                break;
             default:
                 throw new IllegalArgumentException("Unknown OffsetOption type: " + offsetOption.getType());
         }
         return protoBuilder.build();
+    }
+
+    public static apache.rocketmq.v2.Cursor toProtobufCursor(Cursor cursor) {
+        apache.rocketmq.v2.Cursor.Builder builder = apache.rocketmq.v2.Cursor.newBuilder();
+        for (Map.Entry<String, Cursor.OffsetRange> entry : cursor.getRanges().entrySet()) {
+            builder.putRanges(entry.getKey(),
+                apache.rocketmq.v2.Cursor.OffsetRange.newBuilder()
+                    .setBegin(entry.getValue().getBegin())
+                    .setEnd(entry.getValue().getEnd())
+                    .build());
+        }
+        return builder.build();
     }
 
     public static apache.rocketmq.v2.OffsetOption.Policy toProtobufPolicy(long policyValue) {

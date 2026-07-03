@@ -19,7 +19,6 @@ package org.apache.rocketmq.client.java.impl.consumer;
 
 import apache.rocketmq.v2.Code;
 import apache.rocketmq.v2.LiteSubscriptionAction;
-import apache.rocketmq.v2.Message;
 import apache.rocketmq.v2.NotifyUnsubscribeLiteCommand;
 import apache.rocketmq.v2.PeekMessageRequest;
 import apache.rocketmq.v2.PeekMessageResponse;
@@ -44,10 +43,8 @@ import org.apache.rocketmq.client.apis.ClientException;
 import org.apache.rocketmq.client.apis.consumer.OffsetOption;
 import org.apache.rocketmq.client.apis.consumer.PeekDirection;
 import org.apache.rocketmq.client.apis.consumer.PeekIterator;
-import org.apache.rocketmq.client.apis.message.MessageView;
 import org.apache.rocketmq.client.java.exception.LiteSubscriptionQuotaExceededException;
 import org.apache.rocketmq.client.java.exception.StatusChecker;
-import org.apache.rocketmq.client.java.message.MessageViewImpl;
 import org.apache.rocketmq.client.java.message.protocol.Resource;
 import org.apache.rocketmq.client.java.misc.ProtobufUtils;
 import org.apache.rocketmq.client.java.route.Endpoints;
@@ -205,58 +202,34 @@ public class LiteSubscriptionManager {
         return new PeekIteratorImpl(this, liteTopic, anchor, direction);
     }
 
-    PeekResult peekInternal(String liteTopic, int maxMsgNum, OffsetOption anchor,
-        String cursor, PeekDirection direction) throws ClientException {
-        final apache.rocketmq.v2.OffsetOption protoOption;
-        if (cursor != null) {
-            // cursor takes precedence over anchor for continuation reads
-            protoOption = apache.rocketmq.v2.OffsetOption.newBuilder()
-                .setCursor(cursor).build();
-        } else {
-            protoOption = ProtobufUtils.toProtobufOffsetOption(anchor);
-        }
+    PeekMessageResponse peekInternal(String liteTopic, int maxMsgNum,
+        apache.rocketmq.v2.OffsetOption offsetOption,
+        apache.rocketmq.v2.PeekDirection protoDirection) throws ClientException {
         final PeekMessageRequest request = PeekMessageRequest.newBuilder()
             .setTopic(bindTopic.toProtobuf())
             .setLiteTopic(liteTopic)
             .setGroup(group.toProtobuf())
             .setMaxMsgNum(maxMsgNum)
-            .setOffsetOption(protoOption)
-            .setDirection(ProtobufUtils.toProtobufPeekDirection(direction))
+            .setOffsetOption(offsetOption)
+            .setDirection(protoDirection)
             .build();
 
         final Duration requestTimeout = consumerImpl.getClientConfiguration().getRequestTimeout();
         final RpcFuture<PeekMessageRequest, PeekMessageResponse> rpcFuture =
             consumerImpl.getClientManager().peekMessage(consumerImpl.getEndpoints(), request, requestTimeout);
 
-        ListenableFuture<PeekResult> future = Futures.transformAsync(rpcFuture, response -> {
+        ListenableFuture<PeekMessageResponse> future = Futures.transformAsync(rpcFuture, response -> {
             StatusChecker.check(response.getStatus(), rpcFuture);
-            List<MessageView> result = new ArrayList<>();
-            for (Message message : response.getMessagesList()) {
-                result.add(MessageViewImpl.fromProtobuf(message));
-            }
-            return Futures.immediateFuture(
-                new PeekResult(result, response.getCursor(), response.getRestNum()));
+            return Futures.immediateFuture(response);
         }, MoreExecutors.directExecutor());
         try {
             return consumerImpl.handleClientFuture(future);
         } catch (ClientException e) {
             log.error("Failed to peek topic={}, group={}, liteTopic={},"
-                    + " maxMsgNum={}, anchor={}, cursor={}, direction={}, clientId={}",
+                    + " maxMsgNum={}, offsetOption={}, direction={}, clientId={}",
                 getBindTopicName(), getConsumerGroupName(), liteTopic, maxMsgNum,
-                anchor, cursor, direction, consumerImpl.getClientId(), e);
+                offsetOption, protoDirection, consumerImpl.getClientId(), e);
             throw e;
-        }
-    }
-
-    static class PeekResult {
-        final List<MessageView> messages;
-        final String cursor;
-        final long restNum;
-
-        PeekResult(List<MessageView> messages, String cursor, long restNum) {
-            this.messages = messages;
-            this.cursor = cursor;
-            this.restNum = restNum;
         }
     }
 
