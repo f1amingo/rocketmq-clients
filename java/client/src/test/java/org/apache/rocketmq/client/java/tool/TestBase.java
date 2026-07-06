@@ -185,7 +185,7 @@ public class TestBase {
         List<String> keys = new ArrayList<>();
         return new MessageViewImpl(messageId, FAKE_TOPIC_0, body, null, null, null, null, null,
             keys, properties, FAKE_HOST_0, 1, 1, mq, FAKE_RECEIPT_HANDLE_0, 1, corrupted,
-            System.currentTimeMillis());
+            System.currentTimeMillis(), null);
     }
 
     protected MessageQueueImpl fakeMessageQueueImpl(String topic) {

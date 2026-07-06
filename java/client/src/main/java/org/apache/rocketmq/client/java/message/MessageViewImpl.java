@@ -66,13 +66,14 @@ public class MessageViewImpl implements MessageView {
     private final boolean corrupted;
     private final long decodeTimestamp;
     private final Long transportDeliveryTimestamp;
+    private final String brokerName;
 
     public MessageViewImpl(MessageId messageId, String topic, byte[] body, String tag,
         String messageGroup, String liteTopic,
         Long deliveryTimestamp, Integer priority, Collection<String> keys, Map<String, String> properties,
         String bornHost, long bornTimestamp, int deliveryAttempt, MessageQueueImpl messageQueue,
         String receiptHandle, long offset, boolean corrupted,
-        Long transportDeliveryTimestamp) {
+        Long transportDeliveryTimestamp, String brokerName) {
         this.messageId = checkNotNull(messageId, "messageId should not be null");
         this.topic = checkNotNull(topic, "topic should not be null");
         this.body = checkNotNull(body, "body should not be null");
@@ -93,6 +94,7 @@ public class MessageViewImpl implements MessageView {
         this.corrupted = corrupted;
         this.decodeTimestamp = System.currentTimeMillis();
         this.transportDeliveryTimestamp = transportDeliveryTimestamp;
+        this.brokerName = brokerName;
     }
 
     /**
@@ -208,6 +210,9 @@ public class MessageViewImpl implements MessageView {
     }
 
     public String getBrokerName() {
+        if (brokerName != null) {
+            return brokerName;
+        }
         if (messageQueue == null || messageQueue.getBroker() == null) {
             return null;
         }
@@ -326,9 +331,10 @@ public class MessageViewImpl implements MessageView {
         final long offset = systemProperties.getQueueOffset();
         final Map<String, String> properties = message.getUserPropertiesMap();
         final String receiptHandle = systemProperties.getReceiptHandle();
+        final String brokerName = systemProperties.hasBrokerName() ? systemProperties.getBrokerName() : null;
         return new MessageViewImpl(messageId, topic, body, tag, messageGroup, liteTopic, deliveryTimestamp, priority,
             keys, properties, bornHost, bornTimestamp, deliveryAttempt,
-            mq, receiptHandle, offset, corrupted, transportDeliveryTimestamp);
+            mq, receiptHandle, offset, corrupted, transportDeliveryTimestamp, brokerName);
     }
 
     @Override

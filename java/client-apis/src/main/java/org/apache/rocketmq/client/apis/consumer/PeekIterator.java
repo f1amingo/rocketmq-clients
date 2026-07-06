@@ -39,8 +39,10 @@ public interface PeekIterator {
      * Returns the next message in the iteration.
      *
      * @return the next {@link MessageView}.
-     * @throws java.util.NoSuchElementException if the iteration has no more messages; check with {@link #hasNext()} first.
-     * @throws ClientException                  if a network or server error occurs; callers may retry by calling this method again.
+     * @throws java.util.NoSuchElementException if the iteration has no more messages;
+     *                                          check with {@link #hasNext()} first.
+     * @throws ClientException                  if a network or server error occurs; callers may
+     *                                          retry by calling this method again.
      */
     MessageView next() throws ClientException;
 

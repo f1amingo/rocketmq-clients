@@ -104,7 +104,9 @@ public final class Cursor {
 
         @Override
         public int hashCode() {
-            return Objects.hash(begin, end);
+            int result = Long.hashCode(begin);
+            result = 31 * result + Long.hashCode(end);
+            return result;
         }
 
         @Override

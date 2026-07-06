@@ -44,6 +44,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.rocketmq.client.apis.ClientConfiguration;
 import org.apache.rocketmq.client.apis.ClientException;
 import org.apache.rocketmq.client.apis.consumer.OffsetOption;
+import org.apache.rocketmq.client.apis.consumer.PeekDirection;
+import org.apache.rocketmq.client.apis.consumer.PeekIterator;
 import org.apache.rocketmq.client.java.exception.LiteSubscriptionQuotaExceededException;
 import org.apache.rocketmq.client.java.impl.ClientManager;
 import org.apache.rocketmq.client.java.message.protocol.Resource;
@@ -598,5 +600,91 @@ public class LiteSubscriptionManagerTest {
 
         // Verify each topic was processed
         verify(clientManager, times(50)).syncLiteSubscription(any(), any(), any());
+    }
+
+    // ========== peek() tests ==========
+
+    @Test
+    public void testPeekReturnsIterator() {
+        final LiteSubscriptionManager liteSubscriptionManager = new LiteSubscriptionManager(consumerImpl, bindTopic,
+            group);
+
+        PeekIterator iterator = liteSubscriptionManager.peek("test-lite-topic",
+            OffsetOption.MIN_OFFSET, PeekDirection.FORWARD);
+
+        assertThat(iterator).isNotNull();
+        assertThat(iterator).isInstanceOf(PeekIterator.class);
+    }
+
+    @Test
+    public void testPeekWithNullLiteTopicThrows() {
+        final LiteSubscriptionManager liteSubscriptionManager = new LiteSubscriptionManager(consumerImpl, bindTopic,
+            group);
+
+        assertThatThrownBy(() -> liteSubscriptionManager.peek(null,
+            OffsetOption.MIN_OFFSET, PeekDirection.FORWARD))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("liteTopic must not be null or empty");
+    }
+
+    @Test
+    public void testPeekWithEmptyLiteTopicThrows() {
+        final LiteSubscriptionManager liteSubscriptionManager = new LiteSubscriptionManager(consumerImpl, bindTopic,
+            group);
+
+        assertThatThrownBy(() -> liteSubscriptionManager.peek("",
+            OffsetOption.MIN_OFFSET, PeekDirection.FORWARD))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("liteTopic must not be null or empty");
+    }
+
+    @Test
+    public void testPeekWithNullAnchorThrows() {
+        final LiteSubscriptionManager liteSubscriptionManager = new LiteSubscriptionManager(consumerImpl, bindTopic,
+            group);
+
+        assertThatThrownBy(() -> liteSubscriptionManager.peek("test-lite-topic",
+            null, PeekDirection.FORWARD))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("anchor must not be null");
+    }
+
+    @Test
+    public void testPeekWithNullDirectionThrows() {
+        final LiteSubscriptionManager liteSubscriptionManager = new LiteSubscriptionManager(consumerImpl, bindTopic,
+            group);
+
+        assertThatThrownBy(() -> liteSubscriptionManager.peek("test-lite-topic",
+            OffsetOption.MIN_OFFSET, null))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("direction must not be null");
+    }
+
+    @Test
+    public void testPeekWithBackwardDirection() {
+        final LiteSubscriptionManager liteSubscriptionManager = new LiteSubscriptionManager(consumerImpl, bindTopic,
+            group);
+
+        PeekIterator iterator = liteSubscriptionManager.peek("test-lite-topic",
+            OffsetOption.MAX_OFFSET, PeekDirection.BACKWARD);
+
+        assertThat(iterator).isNotNull();
+    }
+
+    @Test
+    public void testPeekWithCursorAnchor() {
+        final LiteSubscriptionManager liteSubscriptionManager = new LiteSubscriptionManager(consumerImpl, bindTopic,
+            group);
+
+        org.apache.rocketmq.client.apis.consumer.Cursor cursor =
+            org.apache.rocketmq.client.apis.consumer.Cursor.newBuilder()
+                .putRange("broker-0", org.apache.rocketmq.client.apis.consumer.Cursor.OffsetRange.of(0L, 10L))
+                .build();
+        OffsetOption cursorOption = OffsetOption.ofCursor(cursor);
+
+        PeekIterator iterator = liteSubscriptionManager.peek("test-lite-topic",
+            cursorOption, PeekDirection.FORWARD);
+
+        assertThat(iterator).isNotNull();
     }
 }

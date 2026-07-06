@@ -19,6 +19,7 @@ package org.apache.rocketmq.client.java.message;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import apache.rocketmq.v2.Digest;
@@ -29,6 +30,7 @@ import apache.rocketmq.v2.Resource;
 import apache.rocketmq.v2.SystemProperties;
 import com.google.protobuf.ByteString;
 import java.nio.charset.StandardCharsets;
+import org.apache.rocketmq.client.java.route.MessageQueueImpl;
 import org.apache.rocketmq.client.java.tool.TestBase;
 import org.junit.Test;
 
@@ -156,5 +158,50 @@ public class MessageViewImplTest extends TestBase {
         assertEquals(body.asReadOnlyByteBuffer(), messageView.getBody());
         assertEquals(topic, messageView.getTopic());
         assertTrue(messageView.isCorrupted());
+    }
+
+    @Test
+    public void testGetBrokerNameWithMessageQueue() {
+        MessageQueueImpl mq = fakeMessageQueueImpl0();
+        MessageViewImpl messageView = fakeMessageViewImpl(mq);
+        // fakeMessageQueueImpl0 uses fakePbBroker0 which has FAKE_BROKER_NAME_0
+        assertEquals(FAKE_BROKER_NAME_0, messageView.getBrokerName());
+    }
+
+    @Test
+    public void testGetBrokerNameWithoutMessageQueue() {
+        // fromProtobuf(message) without MessageQueue and without broker_name in SystemProperties → null
+        final Digest digest = Digest.newBuilder().setType(DigestType.CRC32).setChecksum("9EF61F95").build();
+        SystemProperties systemProperties = SystemProperties.newBuilder().setMessageType(MessageType.NORMAL)
+            .setMessageId(MessageIdCodec.getInstance().nextMessageId().toString())
+            .setBornHost(FAKE_HOST_0)
+            .setBodyDigest(digest)
+            .build();
+        Resource resource = Resource.newBuilder().setName(FAKE_TOPIC_0).build();
+        final ByteString body = ByteString.copyFrom("foobar", StandardCharsets.UTF_8);
+        final Message message = Message.newBuilder().setSystemProperties(systemProperties)
+            .setTopic(resource).setBody(body)
+            .setSystemProperties(systemProperties).build();
+        MessageViewImpl messageView = MessageViewImpl.fromProtobuf(message);
+        assertNull(messageView.getBrokerName());
+    }
+
+    @Test
+    public void testGetBrokerNameFromSystemProperties() {
+        // broker_name set in SystemProperties → extracted even without MessageQueue
+        final Digest digest = Digest.newBuilder().setType(DigestType.CRC32).setChecksum("9EF61F95").build();
+        SystemProperties systemProperties = SystemProperties.newBuilder().setMessageType(MessageType.NORMAL)
+            .setMessageId(MessageIdCodec.getInstance().nextMessageId().toString())
+            .setBornHost(FAKE_HOST_0)
+            .setBodyDigest(digest)
+            .setBrokerName(FAKE_BROKER_NAME_0)
+            .build();
+        Resource resource = Resource.newBuilder().setName(FAKE_TOPIC_0).build();
+        final ByteString body = ByteString.copyFrom("foobar", StandardCharsets.UTF_8);
+        final Message message = Message.newBuilder().setSystemProperties(systemProperties)
+            .setTopic(resource).setBody(body)
+            .setSystemProperties(systemProperties).build();
+        MessageViewImpl messageView = MessageViewImpl.fromProtobuf(message);
+        assertEquals(FAKE_BROKER_NAME_0, messageView.getBrokerName());
     }
 }

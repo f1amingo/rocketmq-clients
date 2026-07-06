@@ -17,14 +17,14 @@
 
 package org.apache.rocketmq.client.java.impl.consumer;
 
+import apache.rocketmq.v2.Message;
+import apache.rocketmq.v2.PeekMessageResponse;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import apache.rocketmq.v2.Message;
-import apache.rocketmq.v2.PeekMessageResponse;
 import org.apache.rocketmq.client.apis.ClientException;
 import org.apache.rocketmq.client.apis.consumer.Cursor;
 import org.apache.rocketmq.client.apis.consumer.OffsetOption;
@@ -33,8 +33,11 @@ import org.apache.rocketmq.client.apis.consumer.PeekIterator;
 import org.apache.rocketmq.client.apis.message.MessageView;
 import org.apache.rocketmq.client.java.message.MessageViewImpl;
 import org.apache.rocketmq.client.java.misc.ProtobufUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class PeekIteratorImpl implements PeekIterator {
+    private static final Logger log = LoggerFactory.getLogger(PeekIteratorImpl.class);
     private static final int PEEK_BATCH_SIZE = 3;
 
     private final LiteSubscriptionManager liteSubscriptionManager;
@@ -99,6 +102,9 @@ class PeekIteratorImpl implements PeekIterator {
     private void updateConsumedRange(MessageViewImpl msg) {
         String brokerName = msg.getBrokerName();
         if (brokerName == null) {
+            log.warn("brokerName is null for message, group={}, topic={}, liteTopic={}, messageId={}",
+                liteSubscriptionManager.getConsumerGroupName(), msg.getTopic(),
+                liteTopic, msg.getMessageId());
             return;
         }
         long offset = msg.getOffset();

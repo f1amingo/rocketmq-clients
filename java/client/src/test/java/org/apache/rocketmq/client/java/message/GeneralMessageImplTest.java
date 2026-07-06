@@ -235,7 +235,7 @@ public class GeneralMessageImplTest extends TestBase {
         final MessageViewImpl messageView = new MessageViewImpl(messageId, topic, body, tag,
             messageGroup, liteTopic,
             deliveryTimestamp, priority, keys, properties, bornHost, bornTimestamp, deliveryAttempt, mq, receiptHandle,
-            offset, corrupted, transportDeliveryTimestamp);
+            offset, corrupted, transportDeliveryTimestamp, null);
         final GeneralMessageImpl generalMessage = new GeneralMessageImpl(messageView);
         assertTrue(generalMessage.getMessageId().isPresent());
         assertEquals(messageId, generalMessage.getMessageId().get());
