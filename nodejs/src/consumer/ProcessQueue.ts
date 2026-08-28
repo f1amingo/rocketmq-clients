@@ -218,7 +218,11 @@ export class ProcessQueue {
       if (status?.code !== Code.OK) {
         await this.#ackMessageLater(messageView, attempt + 1);
       }
-    } catch {
+    } catch (err) {
+      (this.#consumer as any).logger?.warn(
+        'Failed to ack message, attempt=%d, messageId=%s, error=%s',
+        attempt, messageView.messageId, err,
+      );
       await this.#ackMessageLater(messageView, attempt + 1);
     }
   }
@@ -251,7 +255,11 @@ export class ProcessQueue {
       if (status?.code !== Code.OK) {
         await this.#changeInvisibleDurationLater(messageView, duration, attempt + 1);
       }
-    } catch {
+    } catch (err) {
+      (this.#consumer as any).logger?.warn(
+        'Failed to change invisible duration, attempt=%d, duration=%dms, messageId=%s, error=%s',
+        attempt, duration, messageView.messageId, err,
+      );
       await this.#changeInvisibleDurationLater(messageView, duration, attempt + 1);
     }
   }

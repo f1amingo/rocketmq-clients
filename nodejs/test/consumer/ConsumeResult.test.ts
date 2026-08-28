@@ -35,9 +35,23 @@ describe('ConsumeResult', () => {
     assert.strictEqual(suspend.toString(), 'SUSPEND(100ms)');
   });
 
+  it('should accept non-whole-second suspend time', () => {
+    const suspend = ConsumeResultSuspend.of(2173);
+    assert.strictEqual(suspend.suspendTimeMs, 2173);
+  });
+
   it('should reject suspend time less than 50ms', () => {
     assert.throws(() => {
       ConsumeResultSuspend.of(49);
     }, /suspend time cannot be less than 50ms/);
+  });
+
+  it('should reject non-integer suspend time', () => {
+    assert.throws(() => {
+      ConsumeResultSuspend.of(100.5);
+    }, /suspend time must be an integer number of milliseconds/);
+    assert.throws(() => {
+      ConsumeResultSuspend.of(NaN);
+    }, /suspend time must be an integer number of milliseconds/);
   });
 });

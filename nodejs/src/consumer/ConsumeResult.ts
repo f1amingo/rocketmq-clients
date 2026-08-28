@@ -57,6 +57,9 @@ export class ConsumeResultSuspend extends ConsumeResult {
 
   private constructor(suspendTimeMs: number) {
     super('SUSPEND');
+    if (!Number.isInteger(suspendTimeMs)) {
+      throw new Error(`suspend time must be an integer number of milliseconds, got ${suspendTimeMs}`);
+    }
     if (suspendTimeMs < MIN_SUSPEND_TIME_MS) {
       throw new Error(`suspend time cannot be less than ${MIN_SUSPEND_TIME_MS}ms, got ${suspendTimeMs}ms`);
     }
@@ -66,9 +69,9 @@ export class ConsumeResultSuspend extends ConsumeResult {
   /**
    * Create a suspend result with the given suspend time in milliseconds.
    *
-   * @param suspendTimeMs - Suspend time in milliseconds
+   * @param suspendTimeMs - Suspend time in milliseconds, does not need to be a whole second
    * @return {ConsumeResultSuspend} ConsumeResultSuspend instance
-   * @throws {Error} if suspendTimeMs is less than 50ms
+   * @throws {Error} if suspendTimeMs is not an integer or is less than 50ms
    */
   static of(suspendTimeMs: number): ConsumeResultSuspend {
     return new ConsumeResultSuspend(suspendTimeMs);
