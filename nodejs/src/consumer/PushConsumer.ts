@@ -73,6 +73,7 @@ export class PushConsumer extends Consumer {
   readonly #metrics = new ConsumeMetrics();
   #consumeService!: ConsumeService;
   #scanAssignmentTimer?: NodeJS.Timeout;
+  #inflightReceiveRequestCount = 0;
 
   constructor(options: PushConsumerOptions) {
     options.topics = Array.from(options.subscriptions.keys());
@@ -135,21 +136,56 @@ export class PushConsumer extends Consumer {
       clearInterval(this.#scanAssignmentTimer);
       this.#scanAssignmentTimer = undefined;
     }
-    // Drop all process queues
+    // Drop all process queues to stop scheduling new receive requests
     this.logger.info('Dropping all process queues, clientId=%s, queueCount=%d',
       this.clientId, this.#processQueueTable.size);
     for (const { pq } of this.#processQueueTable.values()) {
       pq.drop();
+    }
+    // Wait for the inflight receive requests to be finished so that fetched messages can still be consumed
+    this.logger.info('Waiting for the inflight receive requests to be finished, clientId=%s', this.clientId);
+    await this.#waitForInflightReceiveRequestsFinished();
+    // Wait until every cached message has been consumed and settled (acked,
+    // redelivered or discarded), i.e. all consumption chains have quiesced
+    this.logger.info('Waiting for the cached messages to be consumed, clientId=%s', this.clientId);
+    await this.#waitForCachedMessagesConsumed();
+    // Reserve a short buffer for the ack/changeInvisibleDuration callbacks to be sent
+    await this.sleep(1000);
+    // Abort process queues and consume service, no more messages will be received or consumed
+    for (const { pq } of this.#processQueueTable.values()) {
       pq.abort();
     }
     this.#processQueueTable.clear();
-    // Shutdown consume service
     if (this.#consumeService) {
       this.logger.info('Shutting down consume service, clientId=%s', this.clientId);
       this.#consumeService.abort();
     }
     await super.shutdown();
     this.logger.info('Push consumer has been shutdown successfully, clientId=%s', this.clientId);
+  }
+
+  async #waitForCachedMessagesConsumed(): Promise<void> {
+    // Every received message is cached before consumption and evicted from
+    // the cache once its consumption chain settles, so empty caches on all
+    // process queues mean consumption has fully quiesced.
+    while ([ ...this.#processQueueTable.values() ].some(({ pq }) => pq.cachedMessagesCount() > 0)) {
+      await this.sleep(100);
+    }
+  }
+
+  async #waitForInflightReceiveRequestsFinished(): Promise<void> {
+    const maxWaitingTime = this.requestTimeoutValue
+      + this.getPushConsumerSettings().getLongPollingTimeout();
+    const endTime = Date.now() + maxWaitingTime;
+    while (this.#inflightReceiveRequestCount > 0 && Date.now() <= endTime) {
+      await this.sleep(100);
+    }
+    if (this.#inflightReceiveRequestCount <= 0) {
+      this.logger.info('All inflight receive requests have been finished, clientId=%s', this.clientId);
+    } else {
+      this.logger.warn('Timeout waiting for all inflight receive requests to be finished, clientId=%s, '
+        + 'inflightReceiveRequestCount=%d', this.clientId, this.#inflightReceiveRequestCount);
+    }
   }
 
   protected getSettings() {
@@ -296,7 +332,12 @@ export class PushConsumer extends Consumer {
   }
 
   async receiveMessage(request: ReceiveMessageRequest, mq: MessageQueue, awaitDuration: number) {
-    return super.receiveMessage(request, mq, awaitDuration);
+    this.#inflightReceiveRequestCount++;
+    try {
+      return await super.receiveMessage(request, mq, awaitDuration);
+    } finally {
+      this.#inflightReceiveRequestCount--;
+    }
   }
 
   wrapAckMessageRequest(messageView: MessageView) {
